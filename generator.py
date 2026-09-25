@@ -28,7 +28,18 @@ class LocalMeshFourViewGenerator(BaseGenerator):
         env_path = os.environ.get("LOCALMESH_PYTHON", "").strip().strip('"')
         if env_path:
             candidates.append(Path(env_path).expanduser())
-        for root in (Path("C:/localmesh-engine"), Path("D:/localmesh-engine"), Path("E:/localmesh-engine")):
+        roots = [
+            Path("C:/localmesh-engine"), Path("D:/localmesh-engine"), Path("E:/localmesh-engine"),
+            Path.home() / "localmesh-engine",
+            Path.home() / "Desktop" / "localmesh-engine",
+            Path.home() / "Documents" / "localmesh-engine",
+            Path.home() / "OneDrive" / "Documents" / "localmesh-engine",
+            Path.cwd() / "localmesh-engine",
+        ]
+        env_root = os.environ.get("LOCALMESH_ROOT", "").strip().strip('"')
+        if env_root:
+            roots.insert(0, Path(env_root).expanduser())
+        for root in roots:
             candidates.append(root / ".venv" / "Scripts" / "python.exe")
         for path in candidates:
             if path.is_file():
