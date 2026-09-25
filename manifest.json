@@ -4,8 +4,9 @@
   "type": "model",
   "source": "https://github.com/arjunpatidarofficial/modly-localmesh-four-view",
   "description": "Front image plus right, left and back paths to generate a GLB with a separately installed LocalMesh Engine.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Community adapter",
+  "license": "MIT",
   "generator_class": "LocalMeshFourViewGenerator",
   "tags": ["image-to-3d", "multi-view"],
   "nodes": [{
@@ -14,12 +15,12 @@
     "input": "image",
     "output": "mesh",
     "params_schema": [
-      {"id": "right_image_path", "label": "Right image path", "type": "string", "default": "", "pickerIntent": "image"},
-      {"id": "left_image_path", "label": "Left image path", "type": "string", "default": "", "pickerIntent": "image"},
-      {"id": "back_image_path", "label": "Back image path", "type": "string", "default": "", "pickerIntent": "image"},
-      {"id": "python_exe", "label": "LocalMesh Python executable", "type": "string", "default": ""},
-      {"id": "tier", "label": "Quality", "type": "select", "default": "standard", "options": [{"value":"draft","label":"Draft"},{"value":"standard","label":"Standard"},{"value":"high","label":"High"}]},
-      {"id": "seed", "label": "Seed (-1 random)", "type": "int", "default": -1, "min": -1, "max": 4294967295}
+      {"id": "right_image_path", "label": "Right image path", "type": "string", "default": "", "pickerIntent": "image", "extensions": ["png", "jpg", "jpeg", "webp"], "tooltip": "Full path to the right-side image."},
+      {"id": "left_image_path", "label": "Left image path", "type": "string", "default": "", "pickerIntent": "image", "extensions": ["png", "jpg", "jpeg", "webp"], "tooltip": "Full path to the left-side image."},
+      {"id": "back_image_path", "label": "Back image path", "type": "string", "default": "", "pickerIntent": "image", "extensions": ["png", "jpg", "jpeg", "webp"], "tooltip": "Full path to the back-side image."},
+      {"id": "python_exe", "label": "LocalMesh Python executable", "type": "string", "default": "", "pickerIntent": "text", "tooltip": "Full path to LocalMesh .venv\\Scripts\\python.exe."},
+      {"id": "tier", "label": "Quality", "type": "select", "default": "standard", "options": [{"value":"draft","label":"Draft"},{"value":"standard","label":"Standard"},{"value":"high","label":"High"}], "tooltip": "LocalMesh quality tier."},
+      {"id": "seed", "label": "Seed (-1 random)", "type": "int", "default": -1, "min": -1, "max": 4294967295, "tooltip": "Use -1 for a random seed."}
     ]
   }]
 }

@@ -1,7 +1,5 @@
 """Modly adapter for an existing LocalMesh Engine Python installation."""
-import os
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -16,6 +14,8 @@ class LocalMeshFourViewGenerator(BaseGenerator):
     MODEL_ID = "localmesh-four-view"
     DISPLAY_NAME = "LocalMesh Four View"
     VRAM_GB = 8
+    IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
+    TIERS = {"draft", "standard", "high"}
 
     def is_downloaded(self) -> bool:
         # Weights and runtime are managed by LocalMesh, outside Modly.
@@ -31,22 +31,28 @@ class LocalMeshFourViewGenerator(BaseGenerator):
         for role in ("right", "left", "back"):
             value = str(params.get(f"{role}_image_path", "")).strip().strip('"')
             path = Path(value).expanduser()
-            if not value or not path.is_file() or path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+            if not value or not path.is_file() or path.suffix.lower() not in self.IMAGE_SUFFIXES:
                 raise ValueError(f"Valid {role} image path required (PNG/JPEG/WebP): {value}")
             views[role] = path.resolve()
         python = str(params.get("python_exe", "")).strip().strip('"')
-        if not python or not Path(python).is_file():
+        python_path = Path(python).expanduser()
+        if not python or not python_path.is_file():
             raise ValueError("Set python_exe to LocalMesh's .venv\\Scripts\\python.exe")
         tier = str(params.get("tier", "standard"))
-        if tier not in {"draft", "standard", "high"}:
+        if tier not in self.TIERS:
             raise ValueError("Four-view tier must be draft, standard or high")
-        seed = int(params.get("seed", -1))
+        try:
+            seed = int(params.get("seed", -1))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Seed must be an integer between -1 and 4294967295") from exc
+        if not -1 <= seed <= 4294967295:
+            raise ValueError("Seed must be between -1 and 4294967295")
         self.outputs_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="modly-localmesh-") as directory:
             front = Path(directory) / "front.png"
             front.write_bytes(image_bytes)
             output = Path(directory) / "result"
-            command = [python, "-m", "localmesh_engine", str(front),
+            command = [str(python_path), "-m", "localmesh_engine", str(front),
                        "--right", str(views["right"]), "--left", str(views["left"]),
                        "--back", str(views["back"]), "--tier", tier,
                        "--seed", str(seed), "--to", str(output)]
@@ -70,7 +76,11 @@ class LocalMeshFourViewGenerator(BaseGenerator):
                 stdout, stderr = process.communicate()
                 if process.returncode != 0:
                     raise RuntimeError(f"LocalMesh failed ({process.returncode}): {stderr[-2500:]}")
-                candidates = sorted(output.rglob("*.glb"), key=lambda p: p.stat().st_mtime, reverse=True)
+                candidates = sorted(
+                    (p for p in output.rglob("*.glb") if p.is_file() and p.stat().st_size > 0),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                ) if output.is_dir() else []
                 if not candidates:
                     raise RuntimeError(f"LocalMesh produced no GLB. Output: {stdout[-1000:]} {stderr[-1000:]}")
                 destination = self.outputs_dir / f"localmesh_{int(time.time())}_{uuid.uuid4().hex[:8]}.glb"
