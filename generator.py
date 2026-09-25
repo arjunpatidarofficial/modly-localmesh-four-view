@@ -1,4 +1,5 @@
 """Modly adapter for an existing LocalMesh Engine Python installation."""
+import os
 import subprocess
 import tempfile
 import threading
@@ -17,6 +18,23 @@ class LocalMeshFourViewGenerator(BaseGenerator):
     IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
     TIERS = {"draft", "standard", "high"}
 
+    @staticmethod
+    def _find_python_exe(value: str) -> Optional[Path]:
+        """Resolve an explicit path or discover common LocalMesh installations."""
+        candidates = []
+        explicit = value.strip().strip('"')
+        if explicit:
+            candidates.append(Path(explicit).expanduser())
+        env_path = os.environ.get("LOCALMESH_PYTHON", "").strip().strip('"')
+        if env_path:
+            candidates.append(Path(env_path).expanduser())
+        for root in (Path("C:/localmesh-engine"), Path("D:/localmesh-engine"), Path("E:/localmesh-engine")):
+            candidates.append(root / ".venv" / "Scripts" / "python.exe")
+        for path in candidates:
+            if path.is_file():
+                return path.resolve()
+        return None
+
     def is_downloaded(self) -> bool:
         # Weights and runtime are managed by LocalMesh, outside Modly.
         return True
@@ -34,10 +52,13 @@ class LocalMeshFourViewGenerator(BaseGenerator):
             if not value or not path.is_file() or path.suffix.lower() not in self.IMAGE_SUFFIXES:
                 raise ValueError(f"Valid {role} image path required (PNG/JPEG/WebP): {value}")
             views[role] = path.resolve()
-        python = str(params.get("python_exe", "")).strip().strip('"')
-        python_path = Path(python).expanduser()
-        if not python or not python_path.is_file():
-            raise ValueError("Set python_exe to LocalMesh's .venv\\Scripts\\python.exe")
+        python = str(params.get("python_exe", ""))
+        python_path = self._find_python_exe(python)
+        if python_path is None:
+            raise ValueError(
+                "LocalMesh Python not found. Set python_exe to LocalMesh's "
+                ".venv\\Scripts\\python.exe or set LOCALMESH_PYTHON."
+            )
         tier = str(params.get("tier", "standard"))
         if tier not in self.TIERS:
             raise ValueError("Four-view tier must be draft, standard or high")
